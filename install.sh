@@ -43,6 +43,19 @@ confirm() {
     [[ $answer == y || $answer == Y || $answer == yes || $answer == YES ]]
 }
 
+normalize_source() {
+    local source=$1 file
+    while IFS= read -r -d '' file; do
+        sed -i 's/\r$//' "$file"
+    done < <(find "$source" -type f \( \
+        -name '*.sh' -o -name '*.py' -o -name '*.service' -o -name '*.conf' \
+        -o -name '*.in' -o -name '*.network' -o -name '*.md' -o -name '*.yml' \
+        -o -name '*.yaml' -o -name '*.txt' -o -name '*.json' -o -name '*.js' \
+        -o -name '*.jsx' -o -name '*.css' -o -name '*.html' \
+        -o -name VERSION -o -name UPSTREAM_COMMIT -o -path '*/configs/zapret2/config' \
+        \) -print0)
+}
+
 download_source() {
     local archive=$WORK_DIR/source.tar.gz source=$WORK_DIR/source
     local url="https://github.com/${REPOSITORY}/archive/refs/heads/${REF}.tar.gz"
@@ -51,6 +64,7 @@ download_source() {
         "$url" -o "$archive"
     mkdir "$source"
     tar -xzf "$archive" --strip-components=1 -C "$source"
+    normalize_source "$source"
     for required in VERSION UPSTREAM_COMMIT scripts/install.sh web/frontend/dist/index.html; do
         [[ -e $source/$required ]] || die "Downloaded source is incomplete: $required is missing."
     done

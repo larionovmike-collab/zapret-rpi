@@ -42,6 +42,19 @@ confirm() {
     [[ $answer == y || $answer == Y || $answer == yes || $answer == YES ]]
 }
 
+normalize_source() {
+    local source=$1 file
+    while IFS= read -r -d '' file; do
+        sed -i 's/\r$//' "$file"
+    done < <(find "$source" -type f \( \
+        -name '*.sh' -o -name '*.py' -o -name '*.service' -o -name '*.conf' \
+        -o -name '*.in' -o -name '*.network' -o -name '*.md' -o -name '*.yml' \
+        -o -name '*.yaml' -o -name '*.txt' -o -name '*.json' -o -name '*.js' \
+        -o -name '*.jsx' -o -name '*.css' -o -name '*.html' \
+        -o -name VERSION -o -name UPSTREAM_COMMIT -o -path '*/configs/zapret2/config' \
+        \) -print0)
+}
+
 [[ $EUID -eq 0 ]] || die "Run as root."
 [[ -r /var/lib/zapret-rpi/backup/original/manifest ]] || die "Original installation backup is missing."
 if [[ -d $INSTALL_ROOT && -r $INSTALL_ROOT/VERSION && -r $INSTALL_ROOT/UPSTREAM_COMMIT ]]; then
@@ -63,6 +76,7 @@ curl --proto '=https' --tlsv1.2 -fL --retry 3 --connect-timeout 15 --max-time 18
     "$URL" -o "$ARCHIVE"
 mkdir "$SOURCE_DIR"
 tar -xzf "$ARCHIVE" --strip-components=1 -C "$SOURCE_DIR"
+normalize_source "$SOURCE_DIR"
 
 for required in VERSION UPSTREAM_COMMIT scripts/install.sh scripts/update-system.sh web/frontend/dist/index.html; do
     [[ -e $SOURCE_DIR/$required ]] || die "Downloaded source is incomplete: $required is missing."

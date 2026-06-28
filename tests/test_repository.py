@@ -35,10 +35,15 @@ class RepositoryTests(unittest.TestCase):
             self.assertNotIn("--ssh-client", script)
             self.assertNotIn("detect_ssh_client", script)
 
-    def test_shell_scripts_use_lf(self):
-        for script in ROOT.rglob("*.sh"):
-            if "node_modules" not in script.parts:
-                self.assertNotIn(b"\r", script.read_bytes(), str(script))
+    def test_runtime_text_files_use_lf(self):
+        suffixes = {
+            ".sh", ".py", ".service", ".conf", ".in", ".network", ".md",
+            ".yml", ".yaml", ".txt", ".json", ".js", ".jsx", ".css", ".html",
+        }
+        for path in ROOT.rglob("*"):
+            if path.is_file() and "node_modules" not in path.parts:
+                if path.suffix in suffixes or path.name in {"VERSION", "UPSTREAM_COMMIT", "config"}:
+                    self.assertNotIn(b"\r", path.read_bytes(), str(path))
 
     def test_local_secrets_and_build_dependencies_are_ignored(self):
         ignored = (ROOT / ".gitignore").read_text(encoding="utf-8").splitlines()
