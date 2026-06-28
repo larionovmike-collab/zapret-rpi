@@ -28,6 +28,13 @@ class RepositoryTests(unittest.TestCase):
                 readme,
             )
 
+    def test_ssh_client_fallback_reads_the_terminal(self):
+        for name in ("install.sh", "update.sh"):
+            script = (ROOT / name).read_text(encoding="utf-8")
+            self.assertIn('who -m <"$TTY"', script)
+            self.assertIn("awk 'match($0, /\\([^()]+\\)$/)", script)
+            self.assertNotIn("sed -n 's/.*(", script)
+
     def test_shell_scripts_use_lf(self):
         for script in ROOT.rglob("*.sh"):
             if "node_modules" not in script.parts:

@@ -77,7 +77,8 @@ if [[ -n ${SSH_CONNECTION:-} ]]; then
 elif [[ -n ${SSH_CLIENT:-} ]]; then
     SSH_CLIENT_ADDRESS=${SSH_CLIENT%% *}
 else
-    SSH_CLIENT_ADDRESS=$(who -m 2>/dev/null | sed -n 's/.*(\([^()]*)).*$/\1/p' | head -n 1)
+    SSH_CLIENT_ADDRESS=$(who -m <"$TTY" 2>/dev/null | \
+        awk 'match($0, /\([^()]+\)$/) { print substr($0, RSTART + 1, RLENGTH - 2); exit }')
     [[ -n $SSH_CLIENT_ADDRESS ]] || die "Run the installer from an SSH session over Ethernet."
 fi
 if [[ -e /var/lib/zapret-rpi/backup/original/manifest ]]; then
