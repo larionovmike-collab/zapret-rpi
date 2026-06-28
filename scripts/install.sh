@@ -92,6 +92,11 @@ record_service() {
 rollback_on_error() {
     local rc=$?
     if ((APPLIED)); then
+        echo 'Service diagnostics before rollback:' >&2
+        systemctl --no-pager --full status zapret2.service zapret-rpi-web.service \
+            zapret-rpi-web-lan.service >&2 || true
+        journalctl -b -u zapret2.service -u zapret-rpi-web.service \
+            -u zapret-rpi-web-lan.service --no-pager -n 100 -o cat >&2 || true
         if ((UPDATE_MODE)); then
             echo 'Update deployment failed; the update wrapper will restore its snapshot.' >&2
         else
@@ -135,6 +140,7 @@ git -C /opt/zapret2 fetch --depth 1 origin "$ZAPRET2_COMMIT"
 git -C /opt/zapret2 checkout --detach "$ZAPRET2_COMMIT"
 make -C /opt/zapret2 clean >/dev/null 2>&1 || true
 make -C /opt/zapret2
+chmod -R a+rX /opt/zapret2
 [[ $(git -C /opt/zapret2 rev-parse HEAD) == "$ZAPRET2_COMMIT" ]]
 [[ -x /opt/zapret2/nfq2/nfqws2 ]]
 

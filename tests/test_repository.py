@@ -35,6 +35,12 @@ class RepositoryTests(unittest.TestCase):
             self.assertNotIn("--ssh-client", script)
             self.assertNotIn("detect_ssh_client", script)
 
+    def test_upstream_runtime_permissions_are_restored_after_clone(self):
+        installer = (ROOT / "scripts/install.sh").read_text(encoding="utf-8")
+        validator = (ROOT / "scripts/validate.sh").read_text(encoding="utf-8")
+        self.assertIn("chmod -R a+rX /opt/zapret2", installer)
+        self.assertIn("runuser -u tpws -- test -r /opt/zapret2/lua/zapret-lib.lua", validator)
+
     def test_runtime_text_files_use_lf(self):
         suffixes = {
             ".sh", ".py", ".service", ".conf", ".in", ".network", ".md",
