@@ -28,15 +28,12 @@ class RepositoryTests(unittest.TestCase):
                 readme,
             )
 
-    def test_ssh_client_fallback_reads_the_terminal(self):
-        for name in ("install.sh", "update.sh"):
+    def test_installers_do_not_gate_on_caller_connection(self):
+        for name in ("install.sh", "update.sh", "scripts/install.sh", "scripts/update-system.sh"):
             script = (ROOT / name).read_text(encoding="utf-8")
-            self.assertIn('who -m <"$TTY"', script)
-            self.assertIn("awk 'match($0, /\\([^()]+\\)$/)", script)
-            self.assertIn("/proc/$pid/environ", script)
-            self.assertIn("ss -Htnp state established", script)
-            self.assertIn("ZAPRET_RPI_SSH_CLIENT", script)
-            self.assertNotIn("sed -n 's/.*(", script)
+            self.assertNotIn("SSH_CONNECTION", script)
+            self.assertNotIn("--ssh-client", script)
+            self.assertNotIn("detect_ssh_client", script)
 
     def test_shell_scripts_use_lf(self):
         for script in ROOT.rglob("*.sh"):

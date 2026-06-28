@@ -3,20 +3,18 @@ set -Eeuo pipefail
 
 ROOT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 CONFIG_FILE=
-SSH_CLIENT_OVERRIDE=
 UPDATE_MODE=0
 STATE_DIR=/var/lib/zapret-rpi
 BACKUP_DIR=$STATE_DIR/backup/original
 MANIFEST=$BACKUP_DIR/manifest
 APPLIED=0
 
-usage() { echo "Usage: sudo $0 --config FILE [--ssh-client ADDRESS] [--update]"; }
+usage() { echo "Usage: sudo $0 --config FILE [--update]"; }
 die() { echo "ERROR: $*" >&2; exit 1; }
 
 while (($#)); do
     case "$1" in
         --config) CONFIG_FILE=${2:-}; shift 2 ;;
-        --ssh-client) SSH_CLIENT_OVERRIDE=${2:-}; shift 2 ;;
         --update) UPDATE_MODE=1; shift ;;
         -h|--help) usage; exit 0 ;;
         *) usage >&2; die "unknown argument: $1" ;;
@@ -49,19 +47,6 @@ ETHERNET_CIDR=$(ip -4 -o route show dev eth0 scope link | awk '$1 ~ /^[0-9]+\./ 
 ip -4 -o addr show dev eth0 scope global | grep -q . || die 'eth0 has no global IPv4 address'
 ip -4 route show default | grep -q 'dev eth0' || die 'default IPv4 route does not use eth0'
 systemctl is-active --quiet ssh || die 'SSH service is not active'
-
-if [[ -n ${SSH_CONNECTION:-} ]]; then
-    SSH_CLIENT=${SSH_CONNECTION%% *}
-elif [[ -n $SSH_CLIENT_OVERRIDE && $SSH_CLIENT_OVERRIDE != *[[:space:]]* ]]; then
-    SSH_CLIENT=$SSH_CLIENT_OVERRIDE
-else
-    die 'installation must be started through SSH over Ethernet'
-fi
-
-if [[ -n $SSH_CLIENT ]]; then
-    SSH_ROUTE_CLIENT=${SSH_CLIENT%%%*}
-    [[ $(ip route get "$SSH_ROUTE_CLIENT") == *'dev eth0'* ]] || die 'current SSH session is not routed through eth0'
-fi
 
 if ip -4 route show 10.77.0.0/24 | grep -qv 'dev wlan0'; then
     die '10.77.0.0/24 conflicts with an existing route'
@@ -246,7 +231,6 @@ echo '[7/8] Verifying Ethernet SSH invariants'
 ip -4 -o addr show dev eth0 scope global | grep -q .
 ip -4 route show default | grep -q 'dev eth0'
 ss -lnt | grep -q ':22[[:space:]]'
-[[ $(ip route get "$SSH_ROUTE_CLIENT") == *'dev eth0'* ]]
 
 echo '[8/8] Running health checks'
 /usr/local/sbin/zapret-rpi-validate

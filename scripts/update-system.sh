@@ -3,20 +3,18 @@ set -Eeuo pipefail
 umask 077
 
 SOURCE_DIR=
-SSH_CLIENT_OVERRIDE=
 INSTALL_ROOT=/opt/zapret-rpi
 BACKUP_ROOT=/var/backups/zapret-rpi-updates
 BACKUP_DIR=
 ARCHIVE=
 CONFIG_FILE=
 
-usage() { echo "Usage: sudo $0 --source DIR [--ssh-client ADDRESS]"; }
+usage() { echo "Usage: sudo $0 --source DIR"; }
 die() { echo "ERROR: $*" >&2; exit 1; }
 
 while (($#)); do
     case "$1" in
         --source) SOURCE_DIR=${2:-}; shift 2 ;;
-        --ssh-client) SSH_CLIENT_OVERRIDE=${2:-}; shift 2 ;;
         -h|--help) usage; exit 0 ;;
         *) usage >&2; die "unknown argument: $1" ;;
     esac
@@ -133,9 +131,6 @@ trap on_error ERR
 
 echo "Snapshot saved to $BACKUP_DIR"
 INSTALL_ARGS=(--config "$CONFIG_FILE" --update)
-if [[ -n $SSH_CLIENT_OVERRIDE ]]; then
-    INSTALL_ARGS+=(--ssh-client "$SSH_CLIENT_OVERRIDE")
-fi
 "$SOURCE_DIR/scripts/install.sh" "${INSTALL_ARGS[@]}"
 
 STAGED=${INSTALL_ROOT}.new
