@@ -41,6 +41,16 @@ class RepositoryTests(unittest.TestCase):
         self.assertIn("chmod -R a+rX /opt/zapret2", installer)
         self.assertIn("runuser -u tpws -- test -r /opt/zapret2/lua/zapret-lib.lua", validator)
 
+    def test_web_runtime_permissions_are_restored_after_private_umask(self):
+        installer = (ROOT / "scripts/install.sh").read_text(encoding="utf-8")
+        validator = (ROOT / "scripts/validate.sh").read_text(encoding="utf-8")
+        self.assertIn("chmod 755 /usr/local/lib/zapret-rpi /usr/local/lib/zapret-rpi/web", installer)
+        self.assertIn("chmod -R u=rwX,go=rX /usr/local/lib/zapret-rpi/web", installer)
+        self.assertIn(
+            "runuser -u zapret-web -- test -x /usr/local/lib/zapret-rpi/web/venv/bin/uvicorn",
+            validator,
+        )
+
     def test_runtime_text_files_use_lf(self):
         suffixes = {
             ".sh", ".py", ".service", ".conf", ".in", ".network", ".md",

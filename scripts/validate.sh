@@ -50,6 +50,9 @@ check 'blockcheck2 test set is available' test -d /opt/zapret2/blockcheck2.d/sta
 check 'bounded web autotune test set is available' test -f /opt/zapret2/blockcheck2.d/zapret-rpi-quick/10-curated.sh
 check 'blockcheck2 DNS lookup prerequisite is installed' sh -c 'command -v nslookup >/dev/null || command -v host >/dev/null'
 check 'autotune state is root-only' sh -c "test \"$(stat -c %a /var/lib/zapret-rpi/autotune)\" = 700"
+check 'web runtime is accessible by service user' runuser -u zapret-web -- test -x /usr/local/lib/zapret-rpi/web
+check 'web executable is accessible by service user' runuser -u zapret-web -- test -x /usr/local/lib/zapret-rpi/web/venv/bin/uvicorn
+check 'web application is readable by service user' runuser -u zapret-web -- test -r /usr/local/lib/zapret-rpi/web/zapret_ui/main.py
 check 'zapret2 Lua runtime is readable by daemon user' runuser -u tpws -- test -r /opt/zapret2/lua/zapret-lib.lua
 
 check 'zapret2 service is active' systemctl is-active --quiet zapret2.service

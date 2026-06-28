@@ -212,6 +212,14 @@ cp -a "$ROOT_DIR/web/frontend/dist" /usr/local/lib/zapret-rpi/web/static
 rm -rf /usr/local/lib/zapret-rpi/web/venv
 python3 -m venv /usr/local/lib/zapret-rpi/web/venv
 /usr/local/lib/zapret-rpi/web/venv/bin/pip install --disable-pip-version-check -r "$ROOT_DIR/web/backend/requirements.txt"
+# The public bootstrap deliberately uses umask 077.  Make the root-owned web
+# runtime traversable and readable by its unprivileged service account.
+chown -R root:root /usr/local/lib/zapret-rpi/web
+chmod 755 /usr/local/lib/zapret-rpi /usr/local/lib/zapret-rpi/web
+chmod -R u=rwX,go=rX /usr/local/lib/zapret-rpi/web
+runuser -u zapret-web -- test -x /usr/local/lib/zapret-rpi/web
+runuser -u zapret-web -- test -x /usr/local/lib/zapret-rpi/web/venv/bin/uvicorn
+runuser -u zapret-web -- test -r /usr/local/lib/zapret-rpi/web/zapret_ui/main.py
 echo '[5/8] Assigning wlan0 ownership without changing eth0'
 rfkill unblock wifi || true
 nmcli general reload
