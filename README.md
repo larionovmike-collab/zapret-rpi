@@ -73,6 +73,8 @@ sudo apt install -y curl ca-certificates
 curl -fsSL https://raw.githubusercontent.com/larionovmike-collab/zapret-rpi/refs/heads/main/install.sh | sudo bash
 ```
 
+Запускайте эту команду прямо из обычной SSH-сессии. Предварительный `sudo su -` не требуется: `sudo bash` уже выдаёт установщику необходимые права. Начиная с версии `1.0.2`, предусмотрено и восстановление адреса SSH-клиента после `sudo su -` через дерево процессов `sshd`.
+
 Скрипт запросит:
 
 1. имя Wi‑Fi-точки;

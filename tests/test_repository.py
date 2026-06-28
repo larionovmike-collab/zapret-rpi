@@ -33,6 +33,9 @@ class RepositoryTests(unittest.TestCase):
             script = (ROOT / name).read_text(encoding="utf-8")
             self.assertIn('who -m <"$TTY"', script)
             self.assertIn("awk 'match($0, /\\([^()]+\\)$/)", script)
+            self.assertIn("/proc/$pid/environ", script)
+            self.assertIn("ss -Htnp state established", script)
+            self.assertIn("ZAPRET_RPI_SSH_CLIENT", script)
             self.assertNotIn("sed -n 's/.*(", script)
 
     def test_shell_scripts_use_lf(self):

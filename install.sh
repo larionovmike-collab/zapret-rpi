@@ -43,6 +43,58 @@ confirm() {
     [[ $answer == y || $answer == Y || $answer == yes || $answer == YES ]]
 }
 
+detect_ssh_client() {
+    local value pid parent endpoint
+    if [[ -n ${ZAPRET_RPI_SSH_CLIENT:-} ]]; then
+        printf '%s\n' "$ZAPRET_RPI_SSH_CLIENT"
+        return 0
+    fi
+    if [[ -n ${SSH_CONNECTION:-} ]]; then
+        printf '%s\n' "${SSH_CONNECTION%% *}"
+        return 0
+    fi
+    if [[ -n ${SSH_CLIENT:-} ]]; then
+        printf '%s\n' "${SSH_CLIENT%% *}"
+        return 0
+    fi
+    value=$(who -m <"$TTY" 2>/dev/null | \
+        awk 'match($0, /\([^()]+\)$/) { print substr($0, RSTART + 1, RLENGTH - 2); exit }' || true)
+    if [[ -n $value ]]; then
+        printf '%s\n' "$value"
+        return 0
+    fi
+    pid=$PPID
+    while [[ $pid =~ ^[0-9]+$ && $pid -gt 1 ]]; do
+        value=
+        if [[ -r /proc/$pid/environ ]]; then
+            value=$(tr '\0' '\n' </proc/"$pid"/environ 2>/dev/null | \
+                awk -F= '$1 == "SSH_CONNECTION" { sub(/^[^=]*=/, ""); print; exit }' || true)
+        fi
+        if [[ -n $value ]]; then
+            printf '%s\n' "${value%% *}"
+            return 0
+        fi
+        if [[ $(cat /proc/"$pid"/comm 2>/dev/null || true) == sshd ]]; then
+            endpoint=
+            if command -v ss >/dev/null; then
+                endpoint=$(ss -Htnp state established '( sport = :22 )' 2>/dev/null | \
+                    awk -v needle="pid=$pid," 'index($0, needle) { print $5; exit }' || true)
+            fi
+            if [[ $endpoint == \[*\]:* ]]; then
+                printf '%s\n' "${endpoint#\[}" | sed 's/\]:[0-9]*$//'
+                return 0
+            elif [[ $endpoint == *:* ]]; then
+                printf '%s\n' "${endpoint%:*}"
+                return 0
+            fi
+        fi
+        parent=$(awk '$1 == "PPid:" { print $2; exit }' /proc/"$pid"/status 2>/dev/null || true)
+        [[ -n $parent && $parent != "$pid" ]] || break
+        pid=$parent
+    done
+    return 1
+}
+
 download_source() {
     local archive=$WORK_DIR/source.tar.gz source=$WORK_DIR/source
     local url="https://github.com/${REPOSITORY}/archive/refs/heads/${REF}.tar.gz"
@@ -72,15 +124,7 @@ stage_installed_source() {
 [[ -r $TTY && -w $TTY ]] || die "An interactive terminal is required."
 command -v curl >/dev/null || die "curl is required."
 command -v tar >/dev/null || die "tar is required."
-if [[ -n ${SSH_CONNECTION:-} ]]; then
-    SSH_CLIENT_ADDRESS=${SSH_CONNECTION%% *}
-elif [[ -n ${SSH_CLIENT:-} ]]; then
-    SSH_CLIENT_ADDRESS=${SSH_CLIENT%% *}
-else
-    SSH_CLIENT_ADDRESS=$(who -m <"$TTY" 2>/dev/null | \
-        awk 'match($0, /\([^()]+\)$/) { print substr($0, RSTART + 1, RLENGTH - 2); exit }')
-    [[ -n $SSH_CLIENT_ADDRESS ]] || die "Run the installer from an SSH session over Ethernet."
-fi
+SSH_CLIENT_ADDRESS=$(detect_ssh_client) || die "Run the installer from an SSH session over Ethernet."
 if [[ -e /var/lib/zapret-rpi/backup/original/manifest ]]; then
     if [[ -x /usr/local/sbin/zapret-rpi-validate || -f /etc/systemd/system/zapret2.service ]]; then
         die "zapret-rpi is already installed. Use update.sh instead."
