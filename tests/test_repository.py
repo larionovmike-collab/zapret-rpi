@@ -60,6 +60,9 @@ class RepositoryTests(unittest.TestCase):
         self.assertIn("zapret-rpi-autocheck.timer", rollback)
         self.assertTrue((ROOT / "systemd/zapret-rpi-autocheck.service").is_file())
         self.assertTrue((ROOT / "systemd/zapret-rpi-autocheck.timer").is_file())
+        monitor_unit = (ROOT / "systemd/zapret-rpi-autocheck.service").read_text(encoding="utf-8")
+        self.assertIn("RuntimeDirectory=netns", monitor_unit)
+        self.assertIn("ReadWritePaths=/var/lib/zapret-rpi/autotune /run/netns", monitor_unit)
         for name in ("install.sh", "update.sh"):
             self.assertIn("-name '*.timer'", (ROOT / name).read_text(encoding="utf-8"))
         firewall = (ROOT / "configs/nftables/zapret-rpi.nft.in").read_text(encoding="utf-8")

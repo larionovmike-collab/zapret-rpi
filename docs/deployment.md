@@ -35,6 +35,8 @@ Bootstrap-скрипты скачивают полный снимок репоз
 - асинхронный root-only runner `zapret-rpi-autotune.service`, который запускает штатный `blockcheck2.sh` и сохраняет результаты в `/var/lib/zapret-rpi/autotune`.
 - timer/oneshot-пара `zapret-rpi-autocheck.timer` и `zapret-rpi-autocheck.service` для фоновой проверки принятой доступности доменов через виртуальный forwarded-клиент.
 
+`zapret-rpi-autocheck.service` работает с `ProtectSystem=strict`. Каталог `/run/netns` создаётся самим systemd через `RuntimeDirectory=netns` и отдельно разрешён в `ReadWritePaths`; без обоих параметров `ip netns add` завершается ошибкой read-only filesystem.
+
 Штатные units `hostapd.service` и `dnsmasq.service` отключаются, поскольку проект запускает эти программы с изолированными конфигурациями. Их предыдущее состояние сохраняется для отката. Пакеты при откате не удаляются.
 
 ## Сетевая схема
