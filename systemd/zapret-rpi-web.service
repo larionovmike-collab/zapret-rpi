@@ -1,0 +1,27 @@
+[Unit]
+Description=zapret-rpi local management UI
+After=network-online.target zapret-rpi-hostapd.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=zapret-web
+Group=zapret-web
+WorkingDirectory=/usr/local/lib/zapret-rpi/web
+ExecStart=/usr/local/lib/zapret-rpi/web/venv/bin/uvicorn zapret_ui.main:create_app --factory --host 10.77.0.1 --port 8080 --workers 1 --no-access-log
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=false
+PrivateTmp=true
+ProtectSystem=strict
+ReadWritePaths=/var/lib/zapret-rpi /etc/zapret-rpi
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX AF_NETLINK
+LockPersonality=true
+MemoryDenyWriteExecute=true
+
+[Install]
+WantedBy=multi-user.target

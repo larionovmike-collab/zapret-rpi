@@ -1,0 +1,28 @@
+table inet zapret_rpi {
+    chain input {
+        type filter hook input priority filter; policy drop;
+
+        ct state invalid drop
+        ct state established,related accept
+        iifname "lo" accept
+        iifname "eth0" ip saddr @ETHERNET_CIDR@ tcp dport { 22, 80 } accept
+        iifname "wlan0" udp sport 68 udp dport 67 accept
+        iifname "wlan0" ip saddr 10.77.0.0/24 udp dport 53 accept
+        iifname "wlan0" ip saddr 10.77.0.0/24 tcp dport { 53, 8080 } accept
+        iifname "wlan0" ip saddr 10.77.0.0/24 icmp type echo-request limit rate 5/second accept
+        limit rate 5/second log prefix "zapret-rpi input drop: " level warn
+    }
+
+    chain forward {
+        type filter hook forward priority filter; policy drop;
+        ct state invalid drop
+        iifname "eth0" oifname "wlan0" ct state established,related accept
+        iifname "wlan0" oifname "eth0" ip saddr 10.77.0.0/24 ct state new,established,related accept
+        iifname "wlan0" oifname "wlan0" drop
+    }
+
+    chain postrouting {
+        type nat hook postrouting priority srcnat; policy accept;
+        ip saddr 10.77.0.0/24 oifname "eth0" masquerade
+    }
+}

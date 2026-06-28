@@ -1,0 +1,16 @@
+interface=wlan0
+ctrl_interface=/run/hostapd
+driver=nl80211
+ssid=@SSID@
+country_code=@COUNTRY@
+ieee80211d=1
+hw_mode=g
+channel=@CHANNEL@
+ieee80211n=1
+wmm_enabled=1
+auth_algs=1
+wpa=2
+wpa_key_mgmt=WPA-PSK
+rsn_pairwise=CCMP
+wpa_passphrase=@WPA_PASSPHRASE@
+ap_isolate=1

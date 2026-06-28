@@ -1,0 +1,15 @@
+[Unit]
+Description=zapret-rpi DHCP and DNS for wlan0
+After=systemd-networkd.service zapret-rpi-nftables.service
+Requires=zapret-rpi-nftables.service
+Wants=systemd-networkd.service
+
+[Service]
+Type=simple
+ExecStart=/usr/sbin/dnsmasq --keep-in-foreground --conf-file=/etc/zapret-rpi/dnsmasq.conf --pid-file=
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target
+

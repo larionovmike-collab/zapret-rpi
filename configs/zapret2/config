@@ -1,0 +1,22 @@
+# Managed by zapret-rpi. This file is sourced by the upstream init scripts.
+FWTYPE=nftables
+POSTNAT=1
+NFQWS2_ENABLE=1
+NFQWS2_PORTS_TCP=80,443
+NFQWS2_PORTS_UDP=443
+NFQWS2_TCP_PKT_OUT=20
+NFQWS2_TCP_PKT_IN=0
+NFQWS2_UDP_PKT_OUT=5
+NFQWS2_UDP_PKT_IN=0
+MODE_FILTER=none
+FLOWOFFLOAD=none
+IFACE_LAN=wlan0
+IFACE_WAN=eth0
+DISABLE_IPV6=1
+FILTER_MARK=0x10000000
+FILTER_LAN_IP=10.77.0.0/24
+FILTER_LAN_ALLOW_OUTPUT=0
+INIT_APPLY_FW=1
+
+# Only files installed by zapret-rpi may become this symlink target.
+. /etc/zapret-rpi/zapret2/active.conf

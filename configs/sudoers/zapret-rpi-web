@@ -1,0 +1,2 @@
+zapret-web ALL=(root) NOPASSWD: /usr/local/sbin/zapret-rpi-web-helper *
+

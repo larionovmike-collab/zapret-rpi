@@ -1,0 +1,15 @@
+[Unit]
+Description=zapret-rpi owned nftables firewall and NAT
+After=network-pre.target
+Before=network.target zapret-rpi-hostapd.service zapret-rpi-dnsmasq.service zapret2.service
+Wants=network-pre.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/lib/zapret-rpi/apply-nft.sh
+ExecReload=/usr/local/lib/zapret-rpi/apply-nft.sh
+ExecStop=-/usr/sbin/nft delete table inet zapret_rpi
+
+[Install]
+WantedBy=multi-user.target

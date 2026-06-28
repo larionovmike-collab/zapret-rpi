@@ -1,0 +1,15 @@
+[Unit]
+Description=zapret-rpi Wi-Fi access point
+After=systemd-networkd.service zapret-rpi-nftables.service
+Requires=zapret-rpi-nftables.service
+Wants=systemd-networkd.service
+
+[Service]
+Type=simple
+ExecStartPre=-/usr/sbin/rfkill unblock wifi
+ExecStart=/usr/sbin/hostapd /etc/zapret-rpi/hostapd.conf
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target

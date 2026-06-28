@@ -1,0 +1,16 @@
+[Unit]
+Description=zapret2 automatic strategy selection
+After=network-online.target zapret-rpi-nftables.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/zapret-rpi-autotune run
+ExecStopPost=/usr/local/sbin/zapret-rpi-autotune recover
+TimeoutStartSec=infinity
+Nice=10
+IOSchedulingClass=idle
+PrivateTmp=false
+ProtectHome=true
+ReadWritePaths=/var/lib/zapret-rpi/autotune /etc/zapret-rpi/zapret2/profiles /etc/zapret-rpi/zapret2
+NoNewPrivileges=false
