@@ -6,8 +6,8 @@ MANIFEST=$BACKUP_DIR/manifest
 [[ $EUID -eq 0 ]] || { echo 'Run as root.' >&2; exit 1; }
 [[ -r $MANIFEST ]] || { echo 'No zapret-rpi backup manifest found.' >&2; exit 1; }
 
-systemctl stop zapret-rpi-autotune.service >/dev/null 2>&1 || true
-systemctl disable --now zapret-rpi-web-lan.service zapret-rpi-web.service zapret2.service zapret-rpi-hostapd.service zapret-rpi-dnsmasq.service zapret-rpi-nftables.service >/dev/null 2>&1 || true
+systemctl stop zapret-rpi-autotune.service zapret-rpi-autocheck.service >/dev/null 2>&1 || true
+systemctl disable --now zapret-rpi-autocheck.timer zapret-rpi-web-lan.service zapret-rpi-web.service zapret2.service zapret-rpi-hostapd.service zapret-rpi-dnsmasq.service zapret-rpi-nftables.service >/dev/null 2>&1 || true
 nft list table inet zapret2 >/dev/null 2>&1 && nft delete table inet zapret2 || true
 nft list table inet zapret_rpi >/dev/null 2>&1 && nft delete table inet zapret_rpi || true
 rm -rf /usr/local/lib/zapret-rpi/web /var/lib/zapret-rpi/web /var/lib/zapret-rpi/autotune

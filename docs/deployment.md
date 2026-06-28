@@ -33,6 +33,7 @@ Bootstrap-скрипты скачивают полный снимок репоз
 - вспомогательные пакеты `iw`, `rfkill`, `iproute2` и `network-manager`.
 - локальный FastAPI + React web UI на `10.77.0.1:8080` для Wi‑Fi LAN и `http://<адрес-raspberry-pi>` для Ethernet LAN, запущенный от `zapret-web` через отдельный ограниченный helper.
 - асинхронный root-only runner `zapret-rpi-autotune.service`, который запускает штатный `blockcheck2.sh` и сохраняет результаты в `/var/lib/zapret-rpi/autotune`.
+- timer/oneshot-пара `zapret-rpi-autocheck.timer` и `zapret-rpi-autocheck.service` для фоновой проверки принятой доступности доменов через виртуальный forwarded-клиент.
 
 Штатные units `hostapd.service` и `dnsmasq.service` отключаются, поскольку проект запускает эти программы с изолированными конфигурациями. Их предыдущее состояние сохраняется для отката. Пакеты при откате не удаляются.
 
@@ -98,6 +99,7 @@ PI_USER=root
 | `/usr/local/sbin/zapret-rpi-{validate,smoke-test,rollback}` | эксплуатационные команды |
 | `/usr/local/sbin/zapret-rpi-autotune` | очередь, выполнение, оценка и применение автоподбора |
 | `/etc/systemd/system/zapret-rpi-autotune.service` | длительный oneshot-запуск вне web worker |
+| `/etc/systemd/system/zapret-rpi-autocheck.{service,timer}` | фоновая проверка доступности и её планировщик |
 | `/var/lib/zapret-rpi/backup/original/` | исходные файлы и состояния units |
 
 `eth0` и его NetworkManager connection profile не изменяются. `/opt/zapret2` содержит закреплённый runtime, `/etc/zapret-rpi/zapret2` — профили, а `zapret2.service` управляет upstream init wrapper. Контракт профилей и API описан в `docs/api.md`.

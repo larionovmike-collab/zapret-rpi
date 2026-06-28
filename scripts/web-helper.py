@@ -165,6 +165,9 @@ def main():
         except json.JSONDecodeError: die("invalid JSON")
     else:
         body = {}
+    if action in {"zapret-set", "zapret-enable", "zapret-restart", "autotune-start", "autotune-apply"} \
+            and service_state("zapret-rpi-autocheck.service") in ("active", "activating"):
+        die("an availability check is already in progress")
     if action == "status": result = status()
     elif action == "wifi-get": result = wifi_get()
     elif action == "wifi-set": result = wifi_set(body)
@@ -218,7 +221,18 @@ def main():
         if not isinstance(selections, list): die("strategy selections are required")
         applied = run(AUTOTUNE, "apply", job_id, check=False, input=json.dumps({"selections": selections}))
         if applied.returncode: die(applied.stderr.strip() or "cannot apply autotune result")
+        run("systemctl", "start", "--no-block", "zapret-rpi-autocheck.service", check=False)
         result = json.loads(applied.stdout)
+    elif action == "autotune-monitor-get":
+        monitor = run(AUTOTUNE, "monitor-get", check=False)
+        if monitor.returncode: die(monitor.stderr.strip() or "cannot read availability monitor")
+        result = json.loads(monitor.stdout)
+    elif action == "autotune-monitor-set":
+        changed = run(AUTOTUNE, "monitor-set", check=False, input=json.dumps(body))
+        if changed.returncode: die(changed.stderr.strip() or "cannot configure availability monitor")
+        result = json.loads(changed.stdout)
+        if result.get("enabled"):
+            run("systemctl", "start", "--no-block", "zapret-rpi-autocheck.service", check=False)
     else: die("unknown action")
     json.dump(result, sys.stdout)
 

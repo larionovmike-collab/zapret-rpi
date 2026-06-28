@@ -18,11 +18,14 @@ table inet zapret_rpi {
         ct state invalid drop
         iifname "eth0" oifname "wlan0" ct state established,related accept
         iifname "wlan0" oifname "eth0" ip saddr 10.77.0.0/24 ct state new,established,related accept
+        iifname "eth0" oifname "zapret-mon" ct state established,related accept
+        iifname "zapret-mon" oifname "eth0" ip saddr 192.0.2.2 ct state new,established,related accept
         iifname "wlan0" oifname "wlan0" drop
     }
 
     chain postrouting {
         type nat hook postrouting priority srcnat; policy accept;
         ip saddr 10.77.0.0/24 oifname "eth0" masquerade
+        ip saddr 192.0.2.2 oifname "eth0" masquerade
     }
 }

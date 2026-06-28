@@ -52,6 +52,8 @@ function Autotune({run, setRun, onMessage, onReload}) {
   const [busy, setBusy] = useState(false);
   const [updatedAt, setUpdatedAt] = useState(null);
   const [selected, setSelected] = useState({});
+  const [monitor, setMonitor] = useState(null);
+  const [monitorInterval, setMonitorInterval] = useState('60');
   const running = run && ['queued', 'running'].includes(run.status);
   const elapsed = run?.started_at ? (Date.now() - new Date(run.started_at).getTime()) / 1000 : 0;
   const candidates = run?.candidates || [];
@@ -65,6 +67,30 @@ function Autotune({run, setRun, onMessage, onReload}) {
       setSelected(Object.fromEntries((run.results || []).map(item => [item.protocol, item.strategy])));
     }
   }, [run?.id, run?.status]);
+  useEffect(() => {
+    let cancelled = false;
+    const refreshMonitor = async (initial = false) => {
+      try {
+        const value = await api('/api/v1/autotune/monitor');
+        if (cancelled) return;
+        setMonitor(value);
+        setMonitorInterval(String(value.interval_minutes || 60));
+        if (initial && value.enabled && value.request) {
+          setDomains(value.request.domains.join('\n'));
+          setRepeats(String(value.request.repeats));
+          setScanLevel(value.request.scan_level);
+        }
+        if (value.status === 'retuning') {
+          setRun(await api('/api/v1/autotune/runs/current'));
+        }
+      } catch (e) {
+        if (!cancelled) onMessage(e.message);
+      }
+    };
+    refreshMonitor(true);
+    const timer = setInterval(() => refreshMonitor(false), 30000);
+    return () => { cancelled = true; clearInterval(timer); };
+  }, []);
 
   const addPreset = preset => {
     const current = domains.split(/[\s,]+/).map(value => value.trim()).filter(Boolean);
@@ -127,12 +153,54 @@ function Autotune({run, setRun, onMessage, onReload}) {
       setBusy(false);
     }
   };
+  const saveMonitor = async enabled => {
+    const parsedDomains = domains.split(/[\s,]+/).map(d => d.trim()).filter(Boolean);
+    if (!parsedDomains.length) {
+      onMessage('Укажите хотя бы один проверяемый домен');
+      return;
+    }
+    setBusy(true);
+    try {
+      const body = {
+        enabled,
+        interval_minutes: Number(monitorInterval),
+        domains: parsedDomains,
+        protocols: ['http', 'https', 'quic'],
+        repeats: Number(repeats),
+        scan_level: scanLevel,
+        test_set: 'auto',
+      };
+      setMonitor(await api('/api/v1/autotune/monitor', {method: 'PUT', body: JSON.stringify(body)}));
+      onMessage(enabled ? 'Автопроверка включена, создаётся исходное состояние доступности' : 'Автопроверка выключена');
+    } catch (e) {
+      onMessage(e.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const monitorStatus = {
+    disabled: 'выключена',
+    pending: 'создаётся исходное состояние',
+    checking: 'проверка доменов',
+    healthy: 'доступность не ухудшилась',
+    waiting: 'ожидает завершения автоподбора',
+    retuning: 'запущен автоматический подбор',
+    cooldown: 'ухудшение подтверждено, действует пауза',
+    paused: 'приостановлена',
+    error: 'ошибка',
+  }[monitor?.status] || monitor?.status;
 
   return <section className="card autotune"><div className="title"><div><h2>Автоподбор</h2><p>blockcheck2 проверяет стратегии через текущего провайдера. Во время теста zapret2 временно останавливается и затем восстанавливается.</p></div>{run && <span className={`run-status ${run.status}`}>{run.status}</span>}</div>
     <label>Проверяемые домены <small>сохраняются в этом браузере</small><textarea rows="2" value={domains} onChange={e => setDomains(e.target.value)}/></label>
     <div className="presets">{SERVICE_PRESETS.map(preset => <button className="secondary" disabled={running} key={preset.name} onClick={() => addPreset(preset)}><b>+ {preset.name}</b><small>{preset.hint}</small></button>)}<button className="secondary clear-preset" disabled={running} onClick={() => setDomains('')}><b>Очистить</b><small>начать новый набор</small></button></div>
     <div className="tune-options"><label>Повторы<select value={repeats} onChange={e => setRepeats(e.target.value)}><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select></label><label>Глубина<select value={scanLevel} onChange={e => setScanLevel(e.target.value)}><option value="quick">Быстро</option><option value="standard">Стандартно</option><option value="force">Полный перебор</option></select></label></div>
     <p className="depth-note">{scanLevel === 'quick' ? 'Быстрый режим: до 20 отобранных стратегий на домен.' : `Upstream-перебор: много сотен вариантов, лимит ${scanLevel === 'standard' ? '45' : '90'} минут.`}</p>
+    <div className={`availability-monitor ${monitor?.enabled ? 'enabled' : ''}`}>
+      <div className="title"><div><h3>Автопроверка доступности</h3><p>Если ранее доступный домен перестанет открываться, система повторит автоподбор и применит лучший набор.</p></div><button className={monitor?.enabled ? 'switch on' : 'switch'} disabled={busy || running} onClick={() => saveMonitor(!monitor?.enabled)}><i/></button></div>
+      <div className="monitor-options"><label>Интервал<select value={monitorInterval} onChange={e => setMonitorInterval(e.target.value)}><option value="15">15 минут</option><option value="30">30 минут</option><option value="60">1 час</option><option value="180">3 часа</option><option value="360">6 часов</option><option value="720">12 часов</option><option value="1440">24 часа</option></select></label><button className="secondary" disabled={busy || running} onClick={() => saveMonitor(Boolean(monitor?.enabled))}>Сохранить настройки</button></div>
+      {monitor && <div className="monitor-state"><b>{monitorStatus}</b>{monitor.baseline_summary && <span>Исходное состояние: доступно {monitor.baseline_summary.available} из {monitor.baseline_summary.total}</span>}{monitor.last_check && <span>Последняя проверка: {new Date(monitor.last_check).toLocaleString()}</span>}{monitor.degraded_domains?.length > 0 && <span className="monitor-degraded">Ухудшение: {monitor.degraded_domains.join(', ')}</span>}{monitor.error && <span>{monitor.error}</span>}</div>}
+    </div>
     <div className="actions"><button disabled={busy || running} onClick={start}>{running ? 'Тестирование идёт…' : 'Запустить автоподбор'}</button>{running && <button className="danger" disabled={busy} onClick={cancel}>Остановить</button>}<button className="secondary" disabled={busy} onClick={refresh}>Обновить статус</button></div>
     {running && <div className="live"><i/><div><b>{run.current_test ? `${run.current_test.protocol.toUpperCase()} · ${run.current_test.domain}` : (run.phase || 'подготовка')}</b><span>Проверка {run.tested || 0}{run.expected_tests ? ` из максимум ${run.expected_tests}` : ''} · прошло {formatDuration(elapsed)} из {formatDuration(run.limit_seconds)}</span>{run.current_test && <code>{run.current_test.strategy}</code>}</div></div>}
     {run && <div className="run">{run.expected_tests && <div className="run-progress"><i style={{width: `${run.progress || 0}%`}}/></div>}<div className="run-meta"><span>{run.phase || run.status}{run.expected_tests ? ` · ${run.progress || 0}%` : ` · ${run.tested || 0} проверок`}</span><span>{updatedAt ? `обновлено ${updatedAt.toLocaleTimeString()}` : 'ожидание обновления'}</span></div>{run.error && <p className="error">{run.error}</p>}{run.note && <p className="note">{run.note}</p>}

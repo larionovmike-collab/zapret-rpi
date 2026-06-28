@@ -11,7 +11,7 @@ class Helper:
         self._apply_lock = asyncio.Lock()
 
     async def call(self, action: str, payload: dict | None = None) -> object:
-        mutations = {"wifi-set", "zapret-set", "zapret-enable", "autotune-start", "autotune-cancel", "autotune-apply"}
+        mutations = {"wifi-set", "zapret-set", "zapret-enable", "autotune-start", "autotune-cancel", "autotune-apply", "autotune-monitor-set"}
         if self._apply_lock.locked() and action in mutations:
             raise HTTPException(409, "another configuration change is in progress")
         locked = action in mutations

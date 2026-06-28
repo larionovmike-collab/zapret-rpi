@@ -1,0 +1,16 @@
+[Unit]
+Description=zapret-rpi monitored-domain availability check
+After=network-online.target zapret2.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/zapret-rpi-autotune monitor-check
+TimeoutStartSec=3min
+Nice=10
+IOSchedulingClass=idle
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/var/lib/zapret-rpi/autotune
+NoNewPrivileges=false

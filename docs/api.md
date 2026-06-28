@@ -51,6 +51,8 @@ Upstream hook `99-lan-filter` создаёт mark `0x10000000` только пр
 
 Стандартные outgoing hooks zapret2 принимают только пакеты с `FILTER_MARK`. SSH на `eth0:22` не соответствует ни портам перехвата, ни Wi‑Fi mark. Ethernet LAN, локальные адреса и системный трафик Pi также не получают mark. IPv6 forwarding отключён и zapret2 запускается с `DISABLE_IPV6=1`.
 
+Исключение существует только на время фоновой проверки доступности: root-only service создаёт network namespace с veth `zapret-mon`, добавляет точечный mark для source `192.0.2.2`, выполняет HTTPS-probe и удаляет namespace вместе с правилом. Это позволяет измерить именно forwarded path активного профиля, не направляя локальный output Raspberry Pi в NFQUEUE.
+
 ## Системные сервисы
 
 | Unit | Ответственность |
@@ -110,6 +112,8 @@ API реализован непривилегированным FastAPI backend 
 | `GET /api/v1/autotune/runs/{id}` | Прогресс и результаты конкретного запуска |
 | `POST /api/v1/autotune/runs/{id}/cancel` | Остановить активный запуск и восстановить zapret2 |
 | `POST /api/v1/autotune/runs/{id}/apply` | Атомарно применить сгенерированный профиль через `zapret-rpi-profile` |
+| `GET /api/v1/autotune/monitor` | Получить настройки, статус и краткую baseline-карту |
+| `PUT /api/v1/autotune/monitor` | Включить/выключить монитор и сохранить интервал/параметры подбора |
 
 Тело запуска:
 
@@ -137,6 +141,8 @@ API реализован непривилегированным FastAPI backend 
 ```
 
 Каждая пара должна точно присутствовать среди успешных `candidates` выбранного запуска. Повтор одного протокола отклоняется.
+
+Тело настройки монитора использует те же `domains`, `protocols`, `repeats`, `scan_level` и `test_set`, а также `enabled` и `interval_minutes` в диапазоне 15–1440. API не возвращает адреса DNS или полную внутреннюю baseline-карту; UI получает только число доступных целей, время последней проверки, список подтверждённо ухудшившихся доменов и состояние `disabled`, `pending`, `checking`, `healthy`, `waiting`, `retuning`, `cooldown`, `paused` или `error`.
 
 ## Структура конфигурации
 

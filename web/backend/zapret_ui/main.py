@@ -40,6 +40,11 @@ class AutotuneApply(BaseModel):
     selections: list[StrategySelection] = Field(min_length=1, max_length=3)
 
 
+class AutotuneMonitorUpdate(AutotuneStart):
+    enabled: bool
+    interval_minutes: int = Field(default=60, ge=15, le=1440)
+
+
 def create_app(settings: Settings | None = None, helper: Helper | None = None) -> FastAPI:
     settings = settings or Settings()
     helper = helper or Helper(settings.helper)
@@ -102,6 +107,14 @@ def create_app(settings: Settings | None = None, helper: Helper | None = None) -
     @app.post("/api/v1/autotune/runs/{run_id}/apply")
     async def autotune_apply(run_id: str, body: AutotuneApply):
         return await helper.call("autotune-apply", {"id": run_id, "selections": [item.model_dump() for item in body.selections]})
+
+    @app.get("/api/v1/autotune/monitor")
+    async def autotune_monitor():
+        return await helper.call("autotune-monitor-get")
+
+    @app.put("/api/v1/autotune/monitor")
+    async def autotune_monitor_update(body: AutotuneMonitorUpdate):
+        return await helper.call("autotune-monitor-set", body.model_dump())
 
     static = settings.static_dir
     if static.is_dir():

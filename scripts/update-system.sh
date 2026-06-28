@@ -74,7 +74,8 @@ declare -a BACKUP_PATHS=(
 if ((LEGACY_INSTALL == 0)); then
     BACKUP_PATHS+=(opt/zapret-rpi)
 fi
-for path in /etc/systemd/system/zapret-rpi-*.service /etc/systemd/system/zapret2.service \
+for path in /etc/systemd/system/zapret-rpi-*.service /etc/systemd/system/zapret-rpi-*.timer \
+    /etc/systemd/system/zapret2.service \
     /usr/local/sbin/zapret-rpi-*; do
     [[ -e $path || -L $path ]] && BACKUP_PATHS+=("${path#/}")
 done
@@ -96,7 +97,8 @@ fi
 
 restore_snapshot() {
     echo "Restoring pre-update snapshot from $BACKUP_DIR" >&2
-    systemctl stop zapret-rpi-autotune.service zapret-rpi-web-lan.service \
+    systemctl stop zapret-rpi-autotune.service zapret-rpi-autocheck.timer \
+        zapret-rpi-autocheck.service zapret-rpi-web-lan.service \
         zapret-rpi-web.service zapret2.service zapret-rpi-hostapd.service \
         zapret-rpi-dnsmasq.service zapret-rpi-nftables.service >/dev/null 2>&1 || true
     rm -rf -- /etc/zapret-rpi /usr/local/lib/zapret-rpi /opt/zapret2 \
@@ -115,6 +117,7 @@ restore_snapshot() {
     /usr/local/lib/zapret-rpi/apply-nft.sh >/dev/null 2>&1 || true
     systemctl restart zapret-rpi-hostapd.service zapret-rpi-dnsmasq.service \
         zapret2.service zapret-rpi-web.service zapret-rpi-web-lan.service || true
+    systemctl restart zapret-rpi-autocheck.timer >/dev/null 2>&1 || true
     systemctl restart zapret-rpi-nftables.service >/dev/null 2>&1 || true
     /usr/local/sbin/zapret-rpi-validate || true
 }
@@ -130,6 +133,7 @@ on_error() {
 trap on_error ERR
 
 echo "Snapshot saved to $BACKUP_DIR"
+systemctl stop zapret-rpi-autocheck.timer zapret-rpi-autocheck.service >/dev/null 2>&1 || true
 INSTALL_ARGS=(--config "$CONFIG_FILE" --update)
 "$SOURCE_DIR/scripts/install.sh" "${INSTALL_ARGS[@]}"
 

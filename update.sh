@@ -47,7 +47,7 @@ normalize_source() {
     while IFS= read -r -d '' file; do
         sed -i 's/\r$//' "$file"
     done < <(find "$source" -type f \( \
-        -name '*.sh' -o -name '*.py' -o -name '*.service' -o -name '*.conf' \
+        -name '*.sh' -o -name '*.py' -o -name '*.service' -o -name '*.timer' -o -name '*.conf' \
         -o -name '*.in' -o -name '*.network' -o -name '*.md' -o -name '*.yml' \
         -o -name '*.yaml' -o -name '*.txt' -o -name '*.json' -o -name '*.js' \
         -o -name '*.jsx' -o -name '*.css' -o -name '*.html' \

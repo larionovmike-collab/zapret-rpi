@@ -1,6 +1,8 @@
 import importlib.util
+import socket
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 
 SPEC = importlib.util.spec_from_file_location("autotune", Path(__file__).parents[1] / "scripts" / "autotune.py")
@@ -93,6 +95,31 @@ class AutotuneTests(unittest.TestCase):
         self.assertEqual(stats[("https", "--payload=x --lua-desync=one")]["attempts"], 2)
         self.assertEqual(stats[("https", "--payload=x --lua-desync=one")]["successes"], 2)
         self.assertEqual(stats[("quic", "--payload=y --lua-desync=two")]["attempts"], 1)
+
+    def test_monitor_triggers_only_when_accepted_availability_degrades(self):
+        domains = ["good.example", "accepted-down.example", "improved.example"]
+        baseline = {
+            "good.example": {"available": True},
+            "accepted-down.example": {"available": False},
+            "improved.example": {"available": False},
+        }
+        current = {
+            "good.example": {"available": False},
+            "accepted-down.example": {"available": False},
+            "improved.example": {"available": True},
+        }
+        self.assertEqual(
+            autotune.find_degraded_domains(baseline, current, domains),
+            ["good.example"],
+        )
+
+    def test_monitor_rejects_private_probe_destinations(self):
+        answers = [
+            (socket.AF_INET, socket.SOCK_STREAM, 6, "", ("192.168.1.10", 443)),
+            (socket.AF_INET, socket.SOCK_STREAM, 6, "", ("93.184.216.34", 443)),
+        ]
+        with patch.object(autotune.socket, "getaddrinfo", return_value=answers):
+            self.assertEqual(autotune.public_ipv4_addresses("example.org"), ["93.184.216.34"])
 
 
 if __name__ == "__main__":

@@ -51,9 +51,25 @@ class RepositoryTests(unittest.TestCase):
             validator,
         )
 
+    def test_availability_monitor_units_are_managed(self):
+        installer = (ROOT / "scripts/install.sh").read_text(encoding="utf-8")
+        updater = (ROOT / "scripts/update-system.sh").read_text(encoding="utf-8")
+        rollback = (ROOT / "scripts/rollback.sh").read_text(encoding="utf-8")
+        self.assertIn("zapret-rpi-autocheck.timer", installer)
+        self.assertIn("/etc/systemd/system/zapret-rpi-*.timer", updater)
+        self.assertIn("zapret-rpi-autocheck.timer", rollback)
+        self.assertTrue((ROOT / "systemd/zapret-rpi-autocheck.service").is_file())
+        self.assertTrue((ROOT / "systemd/zapret-rpi-autocheck.timer").is_file())
+        for name in ("install.sh", "update.sh"):
+            self.assertIn("-name '*.timer'", (ROOT / name).read_text(encoding="utf-8"))
+        firewall = (ROOT / "configs/nftables/zapret-rpi.nft.in").read_text(encoding="utf-8")
+        runner = (ROOT / "scripts/autotune.py").read_text(encoding="utf-8")
+        self.assertIn('iifname "zapret-mon" oifname "eth0"', firewall)
+        self.assertIn('"forward_lan_filter"', runner)
+
     def test_runtime_text_files_use_lf(self):
         suffixes = {
-            ".sh", ".py", ".service", ".conf", ".in", ".network", ".md",
+            ".sh", ".py", ".service", ".timer", ".conf", ".in", ".network", ".md",
             ".yml", ".yaml", ".txt", ".json", ".js", ".jsx", ".css", ".html",
         }
         for path in ROOT.rglob("*"):

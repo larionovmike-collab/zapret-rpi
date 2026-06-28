@@ -22,7 +22,7 @@ flowchart LR
     Z --> Q["NFQUEUE только wlan0 forward"]
 ```
 
-HTTP-запрос только ставит задачу и сразу получает `202`. Долгая работа выполняется systemd oneshot-службой и не занимает Uvicorn worker. Во время blockcheck штатный `zapret2.service` останавливается, поскольку upstream требует тест без другого bypass/VPN software; NFQUEUE настроен fail-open. В `finally` runner восстанавливает прежнее состояние zapret2. Найденный профиль не применяется автоматически — администратор подтверждает применение отдельно.
+HTTP-запрос только ставит задачу и сразу получает `202`. Долгая работа выполняется systemd oneshot-службой и не занимает Uvicorn worker. Во время blockcheck штатный `zapret2.service` останавливается, поскольку upstream требует тест без другого bypass/VPN software; NFQUEUE настроен fail-open. В `finally` runner восстанавливает прежнее состояние zapret2. При ручном запуске профиль применяет администратор; запуск от включённого монитора доступности применяет лучший результат автоматически.
 
 Состояние записывается через временный файл и `os.replace`, поэтому API не видит частичный JSON. Выполняется только один запуск. Перезапуск web UI не прерывает тест; systemd и root-owned state не зависят от frontend.
 
@@ -39,6 +39,8 @@ scripts/
   profile.sh                     атомарное применение и rollback профиля
 systemd/
   zapret-rpi-autotune.service    длительный oneshot
+  zapret-rpi-autocheck.service   короткая проверка принятой доступности
+  zapret-rpi-autocheck.timer     планировщик проверки
   zapret-rpi-web.service         непривилегированный API
 tests/
   test_autotune.py               parser, safety и генерация профиля
@@ -59,6 +61,7 @@ web/frontend/                    React source и production dist
 /usr/local/lib/zapret-rpi/web/                 venv, backend, frontend bundle
 /var/lib/zapret-rpi/autotune/
   current.json                                 текущий/последний запуск
+  monitor.json                                 настройки, baseline и состояние проверки
   jobs/<id>.json                               результаты запусков
   jobs/<id>.log                                полный stdout blockcheck2
 /var/lib/zapret-rpi/backup/original/           исходные файлы deployment
@@ -79,6 +82,8 @@ State и логи имеют режим `0600`, каталоги — `0700`. Web
 | `zapret2.service` | штатный init wrapper, `nfqws2`, таблица `inet zapret2` |
 | `zapret-rpi-web.service` | FastAPI и статический React bundle |
 | `zapret-rpi-autotune.service` | один длительный запуск blockcheck2; не включается на boot |
+| `zapret-rpi-autocheck.timer` | пробуждение проверки каждые 5 минут; выбранный интервал хранится в state |
+| `zapret-rpi-autocheck.service` | HTTPS-probe доменов и постановка автоматического автоподбора |
 
 ## API
 
@@ -91,6 +96,8 @@ State и логи имеют режим `0600`, каталоги — `0700`. Web
 | `GET` | `/api/v1/autotune/runs/{id}` | прогресс, request, score, стратегии и ошибки |
 | `POST` | `/api/v1/autotune/runs/{id}/cancel` | остановка запуска и восстановление zapret2 |
 | `POST` | `/api/v1/autotune/runs/{id}/apply` | применённый profile и runtime state |
+| `GET` | `/api/v1/autotune/monitor` | настройки, baseline summary и состояние мониторинга |
+| `PUT` | `/api/v1/autotune/monitor` | включение и параметры мониторинга |
 
 Пример запуска:
 
@@ -109,6 +116,8 @@ State и логи имеют режим `0600`, каталоги — `0700`. Web
 ## Веб-интерфейс
 
 Раздел «Автоподбор» позволяет указать домены, повторы и глубину теста. UI показывает текущий домен, протокол, точную стратегию, число проверок, прошедшее время и рейтинг кандидатов. Процент кандидата — доля успешных попыток, coverage — доля доменов с хотя бы одним успехом. Быстрый режим использует `zapret-rpi-quick` с максимумом 20 отобранных стратегий на домен; standard/force запускают полный upstream-набор. Автоматика отмечает лучший вариант каждого протокола, после чего отметки можно изменить вручную. Осиротевший статус автоматически переводится в `failed`; длительность ограничена 20, 45 или 90 минутами.
+
+В этом же разделе настраивается фоновая автопроверка с интервалом 15 минут–24 часа. Baseline допускает частичную доступность: поводом к переподбору считается только подтверждённая потеря ранее доступного домена. При неактивном профиле `Autotune`, выключенном zapret2 или уже работающем подборе проверка откладывается. Успешный автоматический профиль становится новой baseline; после срабатывания действует шестичасовой cooldown.
 
 Доступ со стороны `wlan0` сохраняется через `http://10.77.0.1:8080`. Для локальной Ethernet LAN доступен отдельный HTTP-вход `http://<адрес-raspberry-pi>` на стандартном TCP-порту 80.
 
@@ -180,7 +189,7 @@ sudo chmod 600 /var/backups/zapret-rpi/*.tar.gz
 На работающей системе той же версии:
 
 ```bash
-sudo systemctl stop zapret-rpi-autotune zapret-rpi-web zapret2
+sudo systemctl stop zapret-rpi-autocheck.timer zapret-rpi-autocheck zapret-rpi-autotune zapret-rpi-web zapret2
 sudo tar --xattrs --acls -xzf /path/to/zapret-rpi-backup.tar.gz -C /
 sudo chown -R root:root /etc/zapret-rpi/zapret2 /var/lib/zapret-rpi/autotune
 sudo chmod 700 /var/lib/zapret-rpi/autotune /var/lib/zapret-rpi/autotune/jobs

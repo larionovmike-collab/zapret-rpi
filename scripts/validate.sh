@@ -46,6 +46,7 @@ exit 1
 '
 check 'autotune runner is installed' test -x /usr/local/sbin/zapret-rpi-autotune
 check 'autotune unit is installed' test -f /etc/systemd/system/zapret-rpi-autotune.service
+check 'availability monitor timer is active' systemctl is-active --quiet zapret-rpi-autocheck.timer
 check 'blockcheck2 test set is available' test -d /opt/zapret2/blockcheck2.d/standard
 check 'bounded web autotune test set is available' test -f /opt/zapret2/blockcheck2.d/zapret-rpi-quick/10-curated.sh
 check 'blockcheck2 DNS lookup prerequisite is installed' sh -c 'command -v nslookup >/dev/null || command -v host >/dev/null'

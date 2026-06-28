@@ -196,6 +196,8 @@ install_managed "$ROOT_DIR/scripts/smoke-test.sh" /usr/local/sbin/zapret-rpi-smo
 install_managed "$ROOT_DIR/scripts/rollback.sh" /usr/local/sbin/zapret-rpi-rollback 755
 install_managed "$ROOT_DIR/scripts/autotune.py" /usr/local/sbin/zapret-rpi-autotune 755
 install_managed "$ROOT_DIR/systemd/zapret-rpi-autotune.service" /etc/systemd/system/zapret-rpi-autotune.service 644
+install_managed "$ROOT_DIR/systemd/zapret-rpi-autocheck.service" /etc/systemd/system/zapret-rpi-autocheck.service 644
+install_managed "$ROOT_DIR/systemd/zapret-rpi-autocheck.timer" /etc/systemd/system/zapret-rpi-autocheck.timer 644
 id zapret-web >/dev/null 2>&1 || useradd --system --home /nonexistent --shell /usr/sbin/nologin zapret-web
 mkdir -p /usr/local/lib/zapret-rpi/web /var/lib/zapret-rpi/web /var/lib/zapret-rpi/autotune/jobs
 chown zapret-web:zapret-web /var/lib/zapret-rpi/web
@@ -233,13 +235,14 @@ ip address replace 10.77.0.1/24 dev wlan0
 echo '[6/8] Enabling forwarding and project services'
 sysctl --system >/dev/null
 systemctl daemon-reload
-systemctl enable zapret-rpi-nftables.service zapret-rpi-hostapd.service zapret-rpi-dnsmasq.service zapret2.service zapret-rpi-web.service zapret-rpi-web-lan.service
+systemctl enable zapret-rpi-nftables.service zapret-rpi-hostapd.service zapret-rpi-dnsmasq.service zapret2.service zapret-rpi-web.service zapret-rpi-web-lan.service zapret-rpi-autocheck.timer
 systemctl restart zapret-rpi-nftables.service
 systemctl restart zapret-rpi-hostapd.service
 systemctl restart zapret-rpi-dnsmasq.service
 systemctl restart zapret2.service
 systemctl restart zapret-rpi-web.service
 systemctl restart zapret-rpi-web-lan.service
+systemctl restart zapret-rpi-autocheck.timer
 
 echo '[7/8] Verifying Ethernet SSH invariants'
 ip -4 -o addr show dev eth0 scope global | grep -q .
